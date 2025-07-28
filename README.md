@@ -1,5 +1,7 @@
 # 2025-hadoop
 
+# 일지
+- [1주차 일지](https://github.com/LandvibeDev/2025-hadoop/blob/main/study_log/week01.md)
 
 # 발표 순서
 1. 김선우: ch.2 ~ ch.3
