@@ -1,0 +1,230 @@
+맵 리듀스 모델에서 데이터를 어떻게 처리하는지 살펴보자. 
+
+맵리듀스의 동작 과정이 생각나지 않는다면, 아래의 포스팅을 한 번 다시 보고 오도록 하자.. 
+
+ [\[하둡 완벽 가이드\] chapter2. 맵리듀스
+
+맵리듀스란? 데이터 처리를 위한 프로그래밍 모델 병행성을 고려하여 설계되었으며, 대용량 데이터셋에서 유용함. 자바,루비,파이썬등으로 구동 가능 예제에서 다룰 기상 데이터셋의 특성에 대
+
+co-yong.tistory.com](https://co-yong.tistory.com/entry/%ED%95%98%EB%91%A1-%EC%99%84%EB%B2%BD-%EA%B0%80%EC%9D%B4%EB%93%9C-chapter2-%EB%A7%B5%EB%A6%AC%EB%93%80%EC%8A%A4)
+
+하둡 맵리듀스의 함수 형식은 아래와 같다.
+
+```
+map : (K1, V1) -> list(K2, V2)
+
+combiner : (K2, list(V2)) -> list(K2, V2)
+
+partition : (K2,V2) -> integer
+
+reduce: (K2, list(V2)) -> list(K3, V3)
+```
+
+위 식들을 보며 유의할 점은... 
+
+-   map 의 output과 reduce의 input은 반드시 같은 타입이어야 한다. (combiner에서 타입이 바뀌는 경우는 없음)
+-   context 객체는 키-값 쌍을 내보낼 때 사용되며, 출력 타입으로 \*인자화된다.  
+    \->  Generic으로 출력 타입이 이미 객체 내부에 정해져 있어 잘못된 타입을 넣으면 컴파일 시점에 바로 오류 발생. (런타임 오류 x)
+-   Combiner 함수는 Reducer의 구현체로, 리듀스 함수와 동일한 형태를 가진다.
+-   Partition함수는 아직 계산중인 key/value 쌍을 어느 Reducer로 보낼지 결정한다. (reducer 인덱스 반환)
+
+전체 흐름도 : map -> (combiner) -> partition -> reduce
+
+내부코드가 궁금하다면 아래를 참고하자.
+
+```
+public class Mapper<KE?YIN, VALUEIN, KEYOUT, VALUEOUT> {
+	public class Context extends MapContext<KEYIN, VALUEIN, KEYOUT, VALUEOUT>{
+    // ...
+    }
+    
+protected void map(KEYIN key, VALUEIN value, 
+	Context context) throws IOException, InterruptedException {
+    // ...
+    }
+}
+
+public void write(KEYOUT key, VALUEOUT value)
+	throws IOException, InterruptedException
+// write 함수는 Haddop MapReduce에서 처리한 결과를 다음 단계로 보내기(출력) 위한 함수
+```
+
+#### 맵리듀스 타입 설정
+
+타입을 설정할 속성을 '타입 설정 속성'과 '타입과 반드시 일치해야 하는 속성' 두 가지로 나눠 살펴보도록 하자.
+
+**타입 설정 속성**
+
+Hadoop Job 객체에 데이터 흐름에서 각 단계의 타입을 지정하는 속성
+
+| class | 메서드 | 설정 대상 |
+| --- | --- | --- |
+| mapreduce.job.inputformat.class | setInputFormatClass() | K1, V1 |
+| mapreduce.map.output.key.class | setMapOutputKeyClass() | K2 |
+| mapreduce.map.output.value.class | setMapOutputValueClass() | V2 |
+| mapreduce.job.output.key.class | setOutputKeyClass() | K3 |
+| mapreduce.job.output.value.class | setOutputValueClass() | V3 |
+
+\*입출력의 기본 타입은 LongWritable과 Text
+
+\* 중간 타입을 명시적으로 설정하지 않으면 자동으로 (최종) 출력 타입과 동일하게 설정됨. 
+
+   ex) V2와 V3가 같다면? setMapOutputValueClass() 설정하지 않아도 ㄱㅊ 
+
+**타입과 반드시 일치해야 하는 속성**
+
+여기서 타입과 반드시 일치해야 한다는 것은, 
+
+Mapper/Reducer/Partition등의 클래스 선언부 제네릭 타입과 반드시 동일해야 한다는 것을 의미한다.
+
+예를 들어 Reducer의 입력 타입을 설정하는 경우라면, Mapper의 출력타입과 반드시 같아야만 할것이다.
+
+즉 setReducerClass()는 Mapper의 출력(K2,V2), Reducer의 입력(K3,V3) 타입을 설정함을 의미한다.
+
+class부는 생략.
+
+| 메서드 | 설정 대상 |
+| --- | --- |
+| setMapperClass() | K1,V1, K2, V2 |
+| setCombinerClass() | K2,V2 |
+| setPartitionerClass() | K2,V2 |
+| setSortComparatorClass() | K2 |
+| setGroupingComparatorClass() | K2 |
+| setReducerClass() | K2,V2,K3,V3 |
+| setOutputFormatClass | K3,V3 |
+
+\* 맵 태스크 수는 입력의 크기와 파일의 블록크기에 의해 결정되기에 따로 설정 X. (파일이 HDFS에 있는 경우)
+
+_사실 이 지점에서 드는 생각은.... 중복되게 설정해주는 부분이 많다고 느껴지는것...?_
+
+_setMapperClass()로 K1,V1,K2,V2에 대해 설정을 완료했다면... 이후로는 더 관리 안해줘도 괜찮은거 아닐까..?_
+
+_내부적으로 더 살펴봐야 할 것 같다.._
+
+> "대부분의 맵리듀스 프로그램은 동일한 키나 값의 타입을 처음부터 끝까지 사용하지 않기 때문에 앞에서 설명한 대로 사용할 타입을 직접 선언하여 잡을 설정할 필요가 있다."
+
+#### 리듀서 수 선택에 관하여
+
+기본값인 1로 둔다면, 모든 중간 데이터가 하나의 리듀스 태스크로 모여들기 때문에 잡이 느려질 수 있다.
+
+\-> 1보다는 크게 설정하는 것을 권장. 
+
+    수를 늘릴수록 병렬 처리 개수가 늘어 리듀스 단계의 시간이 줄어들지만, 
+
+    작은 파일이 너무 많이 생기는 준최적화 (supoptimal)에 빠지게 된다.
+
+           => 리듀서의 실행 시간은 5분 내외, 출력 파일의 HDFS 블록 수는 최소 1개가 되도록 잡자.
+
+.
+
+.
+
+.
+
+_Mapper함수에 key,value로 값이 전달되고.. 속성이 어쩌고 저쩌고... 알겠는데,_ 
+
+### _Hadoop에서 입력 데이터를 어떻게 읽고 분할해서 Mapper에 전달해?_
+
+하둡이 처리할 수 있는 입출력 포맷은 아래와 같다. 
+
+-   텍스트 (비정형)
+-   바이너리
+-   다중
+-   데이터베이스
+
+#### _입력 포맷을 어떻게 제공하는지 알아보도록 하자!_
+
+우선 입력 데이터를 여러 작업 단위(청크)로 나누며, 이를 split이라고 한다. 
+
+split내부에서 Mapper가 처리하는 최소 데이터 단위 (= 한 쌍의 key-value)를  record라고 한다. 
+
+1.  InputFromat이 getSplits()를 호출하여 입력 스플릿을 계산하여 애플리케이션 마스터에게 전송
+2.  애플리케이션 마스터는 스플릿의 저장 위치를 이용해 클러스터에서 각 스플릿을 처리할 맵 태스크를 스케줄링함.  
+    \*가능한 가장 가깝게 배치하며 탐욕적 근사 알고리즘을 통한 스플릿 정렬로 큰것부터 처리 하도록 함.
+3.  InputFormat이 createRecordReader()를 통해 해당 스플릿에 대한 RecordReader를 얻는다.
+4.  맵 태스크는 이를 통해 맵 함수로 전달할 레코드의 키-값 쌍을 생성. (단순 레코드 반복자)
+
+InputFormat 구현체에는 아래와 같은 것들이 있고, 파
+
+파일을 원본 데이터로 사용하는 모든 구현체의 기본 클래스는 FileInputFormat이다.
+
+  -> 잡의 입력 파일을 포함하는 위치정보와 입력 파일의 스플릿을 생성하는 구현체를 제공.
+
+[##_Image|kage@WBXMp/btsPNeOg2m8/AAAAAAAAAAAAAAAAAAAAADNY-HK-EOV4NhEZlfMDLSMqI6GVj8LhRip-RyO5pJ8d/img.png?credential=yqXZFxpELC7KVnFOS48ylbz2pIh7yKj8&amp;expires=1756652399&amp;allow_ip=&amp;allow_referer=&amp;signature=CzrBaK5poipSPUEqIfGExwV5QN8%3D|CDM|1.3|{"originWidth":741,"originHeight":550,"style":"alignCenter","width":616,"height":457}_##]
+
+잡의 입력은 경로의 집합으로 지정
+
+-   addInputPath(), addInputPaths(), setInputPaths()를 사용
+-   파일, 디렉토리 또는 glob을 통해 집합을 나타낼 수 있음
+-   .나 \_로 파일이 시작하면 기본적으로 필터링되며 setInputPathFilter()로 추가적인 필터링 가
+
+_그럼 스플릿을 어떻게 하는데??_
+
+FileInputFormat은 HDFS보다 큰 블록에 대해서 스플릿을 분리하며, 하둡 속성 설정으로 크기 제어 가능.
+
+| 속성명 | 타입 | 기본값 | 설명 |
+| --- | --- | --- | --- |
+| mapreduce.input.fileinputformat.split.minsize | int | 1 | 파일 스플릿의 최소 바이트 크기 |
+| mapreduce.input.fileinputformat.split.maxsize | long | Long.MAX\_VALUE | 파일 스플릿의 최대 바이트 크기 |
+| dfs.blocksize | long | 128MB | HDFS 블록 바이트 크기 |
+
+\* 스플릿 최대 크기는 블록 크기보다 작을 때만 효과가 있음. 
+
+설정 예시를 살펴보자.
+
+| 최소 스플릿 크기 | 최대 스플릿 크기 | 블록 크기 | 스플릿 크기 | 비고 |
+| --- | --- | --- | --- | --- |
+| 1 (기본) | Long.MAX\_VALUE(기본) | 128MB(기본) | 128MB | 기본적으로 스플릿 크기 = 기본 블록 크기 |
+| 1 ( 기본) | Long.MAX\_VALUE(기본) | 256MB | 256MB | HDFS 블록 크기를 늘리면 자연스레 스플릿 크기도 증가한다. |
+| 256MB | Long.MAX\_VALUE(기본) | 128MB(기본) | 256MB | 최소 스플릿 크기 > 블록 크기    데이터 지역성에서 손해 발생 |
+| 1(기본) | 64MB | 128MB(기본) | 64MB | 최대 스플릿 크기 < 블록 크기   스플릿 크기 감소 |
+
+작은 파일의 경우 CombineFileInputFormat을 통해 여러 파일을 하나로 묶어서 스플릿을 생성할 수 있다. 
+
+\* 노드와 랙의 지역성을 고려하여 동일한 스플릿 에 배치할 블록을 결정
+
+그럼에도 작은 파일들은 잡 실행에 필요한 seek 횟수를 증가시키기에 피하는것이 좋다.... 
+
+\-> 순차 파일을 통해 작은 파일들을 병합하도록 하자..
+
+_만약 파일이 스플릿되지 않고 단일 매퍼가 입력 파일 전체를 처리하기를 원한다면..?_
+
+2가지 방법이 있다.
+
+1.  최소 스플릿 크기를 Long.MAX\_VALUE로 설정
+2.  해당 FileInputFormat의 구체화된 서브클래스의 서브클래스를 만들어 isSplitable()가 무조건 false를 반환하도록 하기
+
+_._
+
+_._
+
+_._
+
+_이제 스플릿에 관한 내용은 되었으니,, 입출력 포맷별 클래스를 살펴보자._
+
+|   | 입력 | 출력 | 비고 |
+| --- | --- | --- | --- |
+| 텍스트  | TextInputFormat      KeyValueTextInputFormat      NLineInputFormat | TextOutFormat | 논리적인 레코드는 항상 HDFS 블록과 딱 맞아 떨어지지 않음. |
+| 바이너리 | SequenceFileInputFormat      SequenceFileAsTextInputFormat      SequenceFileAsBinaryInputFormat      FixedLengthInputFormat | SequenceFileOutputFormat |   |
+| 다중 | MultipleInputs | MultipleOutputs |   |
+| 데이터베이스 | DBInputFormat | DBOutputFormat | 샤딩 지원 x. |
+
+\*XML의 경우 StreamXlRecordReader 클래스를 제공해주며, 파일 전체를 하나의 레코드로 처리하는것도 방법이다.
+
+[##_Image|kage@L4So1/btsPObjpm4t/AAAAAAAAAAAAAAAAAAAAAMquRRciAIhNpWjR-FxXmzxYwSqVaAuuSrAROpsAX1RL/img.png?credential=yqXZFxpELC7KVnFOS48ylbz2pIh7yKj8&amp;expires=1756652399&amp;allow_ip=&amp;allow_referer=&amp;signature=%2FwdVP4wZF9e%2BU8KRHGKGwxjC8iM%3D|CDM|1.3|{"originWidth":1105,"originHeight":766,"style":"alignCenter","width":582,"height":403}_##]
+
+**+느린 출력 : LazyOutputFormat**
+
+ 빈 파일을 만들지 않는 애플리케이션을 작성하고 싶을 때 사용
+
+ JobConf와 내부 출력 포맷을 인자로 LazyOutputFormat의 setOutputFormatClass()를 호출.
+
+---
+
+#### JAVA : Generics
+
+<iframe src="https://www.youtube.com/embed/H0BCPdmN95A" width="860" height="484" frameborder="0" allowfullscreen="true"></iframe>
+
+#### 데이터 파티셔닝
+
+<iframe src="https://www.youtube.com/embed/P7LqaEO-nGU" width="860" height="484" frameborder="0" allowfullscreen="true"></iframe>
