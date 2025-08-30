@@ -3,6 +3,9 @@
 # 일지
 - [1주차 일지](https://github.com/LandvibeDev/2025-hadoop/blob/main/study_log/week01.md)
 - [2주차 일지](https://github.com/LandvibeDev/2025-hadoop/blob/main/study_log/week02.md)
+- [3주차 일지](https://github.com/LandvibeDev/2025-hadoop/blob/main/study_log/week03.md)
+- [4주차 일지](https://github.com/LandvibeDev/2025-hadoop/blob/main/study_log/week04.md)
+- [5주차 일지](https://github.com/LandvibeDev/2025-hadoop/blob/main/study_log/week05.md)
 
 # 발표 순서
 1. 김선우: ch.2 ~ ch.3
