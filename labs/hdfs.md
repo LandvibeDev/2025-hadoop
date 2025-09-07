@@ -1,4 +1,273 @@
 ```
+## [tmux alias]
+
+## set-window-option : setw
+
+## set-option : set
+
+
+
+set -g prefix C-a
+
+
+
+set-window-option -g xterm-keys on
+
+set-option -g default-terminal "xterm-256color"
+
+
+
+## Reload tmux config dynamically
+
+bind R source-file ~/.tmux.conf \; display-message "source-file done"
+
+
+
+## split windows key
+
+##    vertical: % -> |
+
+##  horizontal: " -> -
+
+unbind %
+
+unbind '"'
+
+bind | split-window -h
+
+bind - split-window -v
+
+
+
+## move last window: Ctrl+a
+
+bind C-a last-window
+
+## move prev window: N
+
+bind-key N prev
+
+## move next window: n (default)
+
+
+
+## Pane border color settings
+
+set -g pane-active-border-style bg=black,fg=green
+
+set -g pane-border-style bg=black,fg=white
+
+
+
+## Synchronize panes
+
+bind s setw synchronize-pane
+
+
+
+## Select(move) pane: h/j/k/l or ctrl+h/j/k/l
+
+bind  h select-pane -L
+
+bind  l select-pane -R
+
+bind  k select-pane -U
+
+bind  j select-pane -D
+
+bind  C-h select-pane -L
+
+bind  C-l select-pane -R
+
+bind  C-k select-pane -U
+
+bind  C-j select-pane -D
+
+
+
+## Pane size control:
+
+unbind-key     Up
+
+unbind-key   Down
+
+unbind-key   Left
+
+unbind-key  Right
+
+# move 1 line: up/down/left/right
+
+bind-key -r    Up resize-pane -U
+
+bind-key -r  Down resize-pane -D
+
+bind-key -r  Left resize-pane -L
+
+bind-key -r Right resize-pane -R
+
+unbind-key     C-Up
+
+unbind-key   C-Down
+
+unbind-key   C-Left
+
+unbind-key  C-Right
+
+# move 5 lines: ctrl + up/down/left/right
+
+bind-key -r    C-Up resize-pane -U 5
+
+bind-key -r  C-Down resize-pane -D 5
+
+bind-key -r  C-Left resize-pane -L 5
+
+bind-key -r C-Right resize-pane -R 5
+
+# move 10 lines: alt + up/down/left/right
+
+bind-key -r    M-Up resize-pane -U 10
+
+bind-key -r  M-Down resize-pane -D 10
+
+bind-key -r  M-Left resize-pane -L 10
+
+bind-key -r M-Right resize-pane -R 10
+
+
+
+# 80 column size: alt + M
+
+bind-key      M-8 resize-pane -x 80
+
+
+
+
+
+## Mouse control
+
+set -g mouse on
+
+
+
+## copy, paste buffer
+
+## [copy mode : C-a, esc], [select start : v], [copy : y], [paste : C-a, p]
+
+unbind [
+
+bind Escape copy-mode
+
+unbind p
+
+bind p paste-buffer
+
+bind  C-v paste-buffer
+
+# tmux < 2.5
+
+#bind -t vi-copy 'v' begin-selection
+
+#bind -t vi-copy 'y' copy-selection
+
+# tmux >= 3.5
+
+bind-key -T copy-mode-vi v send-keys -X begin-selection
+
+bind-key -T copy-mode-vi C-v send-keys -X rectangle-toggle
+
+bind-key -T copy-mode-vi y send-keys -X copy-selection
+
+
+
+## Set status bar
+
+set -g status-style bg=black,fg=yellow
+
+set -g status-justify left
+
+set -g status-left-length 20
+
+set -g status-right-length 25
+
+set -g status-left " #[fg=red][#[fg=green]#H#[fg=red]]#[default]"
+
+set -g status-right "#[fg=red][#[fg=green]%H:%M #[fg=magenta]%a %m-%d#[fg=red]] #[default]"
+
+setw -g window-status-format '#[fg=yellow,bold]#I #W#[default] '
+
+setw -g window-status-current-format '#[fg=blue,bold,bg=black]#I #W#[default] '
+
+## hide/show status bar toggle: b
+
+bind b set status
+
+
+
+## Highlight active window
+
+setw -g window-status-current-style bg=green
+
+setw -g window-status-style bg=black
+
+## message
+
+set -g message-style fg=black,bg=green
+
+
+
+## Set notifications
+
+setw -g monitor-activity on
+
+set -g visual-activity on
+
+set -g visual-bell on
+
+set -g bell-action any
+
+set -g visual-bell off
+
+
+
+## Automatically set window title
+
+setw -g automatic-rename off
+
+set -g set-titles on
+
+set -g set-titles-string "[#H] [#I: #W#F]"
+
+
+
+## Fix putty/pietty function key problem
+
+set -g terminal-overrides "xterm*:kf1=\e[11~:kf2=\e[12~:kf3=\e[13~:kf4=\e[14~:kf5=\e[15~:kf6=\e[17~:kf7=\e[18~:kf8=\e[19~"
+
+set -g terminal-overrides "xterm*:kLFT5=\eOD:kRIT5=\eOC:kUP5=\eOA:kDN5=\eOB:smkx@:rmkx@"
+
+
+
+## terminal scrollback
+
+#set -g terminal-overrides 'xterm*:smcup@:rmcup@'
+
+
+
+set-option -g history-limit 50000
+
+
+
+## Etc default keys:
+
+# Show Time: t
+
+# Pane Zoom: z
+
+bind-key L switch-client -n
+
+```
+
+```
 function de() {
     # Docker 컨테이너 선택
     local CONTAINER=$(docker ps --format '{{.ID}} {{.Names}}' | fzf --height 40% --layout=reverse --info=inline --prompt "Select container: ")
