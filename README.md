@@ -13,3 +13,6 @@
 3. 박준영: ch.6 ~ ch.7
 4. 김용진: ch.8 ~ ch.9
 5. 이세원: ch.10 ~ ch.11
+
+# 실습 
+- [hdfs 실습](https://github.com/LandvibeDev/2025-hadoop/blob/main/labs/hdfs.md)
