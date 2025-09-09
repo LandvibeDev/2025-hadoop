@@ -17,3 +17,4 @@
 
 # 실습 
 - [hdfs 실습](https://github.com/LandvibeDev/2025-hadoop/blob/main/labs/hdfs.md)
+- [hbase 실습](https://github.com/LandvibeDev/2025-hadoop/blob/main/labs/hbase.md)
